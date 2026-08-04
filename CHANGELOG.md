@@ -2,6 +2,18 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.1.0 (2026-08-04)
+
+### Changed
+
+- **A 模式分层（构成审查修复）**：坑 / 反模式 / 排障速查 / 决策原因全量从 SKILL.md 迁入 `references/troubleshooting.md`，SKILL.md 瘦身 561→485 行，只留干净主流程（对齐 gen/review v1.4.0 A 模式，与 serial-tftp v1.5.0 同构）
+- **删除主题越界文件** `references/mips-ftrace-config.md`：内核 ftrace 配置主题与烧录无关，归属 `kernel-tracing-ftrace-config` skill（该处已有更完整分析，无独有内容）
+- 顶部「关键陷阱」行收窄为「安全前置提醒」并指向 troubleshooting.md
+
+### 审查来源
+
+2026-08-04 构成审查（hermes-skill-review v1.4.0）P1×2：A 模式分层违反 / 定位分歧文件；P2×3（commit 标签 v1.0.1、安装目录带 .git、.gitignore 缺失）中后两项本次一并处理。
+
 ## 1.0.0 (2026-08-04)
 
 ### Added（首发）
