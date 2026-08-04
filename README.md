@@ -30,9 +30,9 @@ curl -fsSL https://gitee.com/GreatBigM/adb-tftp-skill/raw/main/install.sh | bash
 
 ```bash
 git clone --depth 1 https://gitee.com/GreatBigM/adb-tftp-skill.git /tmp/adb-tftp-skill
-cp -r /tmp/adb-tftp-skill ~/.hermes/skills/adb-tftp-flash   # Hermes
-cp -r /tmp/adb-tftp-skill ~/.claude/skills/adb-tftp-flash    # Claude Code
-cp -r /tmp/adb-tftp-skill ~/.codex/skills/adb-tftp-flash     # Codex
+cp -r /tmp/adb-tftp-skill ~/.hermes/skills/adb-tftp   # Hermes
+cp -r /tmp/adb-tftp-skill ~/.claude/skills/adb-tftp    # Claude Code
+cp -r /tmp/adb-tftp-skill ~/.codex/skills/adb-tftp     # Codex
 ```
 
 > 注意：`hermes skills install` 会被安全扫描拦截（skill 涉及 `devmem`/`reboot`/`sudo` 等命令触发 dangerous 误报），一键脚本/手动复制是合规替代路径。

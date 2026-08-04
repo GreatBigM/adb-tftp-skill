@@ -1,5 +1,5 @@
 ---
-name: adb-tftp-flash
+name: adb-tftp
 description: Ingenic T32 家族 NOR flash 项目 ADB 通道 TFTP 烧录 - 通过 ADB 写 CPSPR 寄存器触发 U-Boot 进入 TFTP 模式，支持分区级烧录。含一次性 prepare 流程（编译定制 adb + gen_adbd_conf + user_env），配齐后 ip-reset-and-wait 自动等设备回连，无需串口查 IP。适用 HM6801/HM6502/HM6502_B01/HM6503/HM6402（共用同一 mtdparts）。HM6505 是 NAND 平台，不适用
 version: 1.0.0
 category: devops
@@ -8,7 +8,7 @@ metadata:
     triggers: [adb烧录, cpspr, mai_auto_flash, ip-reset-and-wait, 分区烧录, hm6801烧录, hm6502烧录, hm6503烧录, hm6402烧录, gen_adbd_conf, user_env, prepare烧录环境]
 ---
 
-# Ingenic ADB 通道 TFTP 烧录（adb-tftp-flash）
+# Ingenic ADB 通道 TFTP 烧录（adb-tftp）
 
 > 用户指挥 AI，AI 替用户执行。给意图就干不反问：听到"烧录"直接按本 skill 流程执行，禁止先列串口步骤、禁止让用户手动输入。依赖缺失（adb/脚本/网络）→ 对话层引导用户确认后写入，不让用户敲命令。
 

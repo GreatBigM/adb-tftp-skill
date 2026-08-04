@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# adb-tftp-flash skill 一键安装/更新脚本（多 agent 目标）
+# adb-tftp skill 一键安装/更新脚本（多 agent 目标）
 # 用法:
 #   交互选择: curl -fsSL https://gitee.com/GreatBigM/adb-tftp-skill/raw/main/install.sh -o /tmp/install.sh && bash /tmp/install.sh
 #   指定目标: curl -fsSL https://gitee.com/GreatBigM/adb-tftp-skill/raw/main/install.sh | bash -s -- --target hermes,claude
@@ -9,7 +9,7 @@
 set -euo pipefail
 
 REPO_URL="https://gitee.com/GreatBigM/adb-tftp-skill.git"
-SKILL_NAME="adb-tftp-flash"
+SKILL_NAME="adb-tftp"
 COPY_DIRS="scripts references"   # 除 SKILL.md/CHANGELOG.md 外需拷贝的目录
 
 get_version() { grep -m1 '^version:' "$1" 2>/dev/null | sed 's/^version:[[:space:]]*//' | tr -d '"'\'' ' || true; }
