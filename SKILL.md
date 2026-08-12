@@ -1,6 +1,6 @@
 ---
 name: adb-tftp
-description: Ingenic T32 NOR ADB TFTP 分区烧录：CPSPR 触发 U-Boot，回连免串口查IP。适配 HM6801/HM6502/HM6503/HM6402，HM6505 NAND除外
+description: Ingenic T32 NOR ADB TFTP 分区烧录：CPSPR 触发 U-Boot，回连免串口查IP。适配 HM6801/HM6502/HM6503/HM6402，HM6505 NAND 除外。
 version: 1.1.0
 category: devops
 metadata:
