@@ -1,6 +1,6 @@
 ---
 name: adb-tftp
-description: Ingenic T32 家族 NOR flash 项目 ADB 通道 TFTP 烧录 - 通过 ADB 写 CPSPR 寄存器触发 U-Boot 进入 TFTP 模式，支持分区级烧录。含一次性 prepare 流程（编译定制 adb + gen_adbd_conf + user_env），配齐后 ip-reset-and-wait 自动等设备回连，无需串口查 IP。适用 HM6801/HM6502/HM6502_B01/HM6503/HM6402（共用同一 mtdparts）。HM6505 是 NAND 平台，不适用
+description: Ingenic T32 NOR ADB TFTP 分区烧录：CPSPR 触发 U-Boot，回连免串口查IP。适配 HM6801/HM6502/HM6503/HM6402，HM6505 NAND除外
 version: 1.1.0
 category: devops
 metadata:
