@@ -1,6 +1,6 @@
 # adb-tftp-skill
 
-Ingenic T32 家族 NOR flash 设备的 **ADB 通道 TFTP 烧录** skill（Hermes / Claude Code / Codex 通用）。
+Ingenic T32 家族 NOR flash 设备的 **ADB 通道 TFTP 烧录** skill（Hermes / Claude Code / Codex / ZCode 通用）。
 
 ## 这是什么
 
@@ -16,9 +16,9 @@ Ingenic T32 家族 NOR flash 设备的 **ADB 通道 TFTP 烧录** skill（Hermes
 curl -fsSL https://gitee.com/GreatBigM/adb-tftp-skill/raw/main/install.sh -o /tmp/install.sh && bash /tmp/install.sh
 
 # 指定目标
-curl -fsSL https://gitee.com/GreatBigM/adb-tftp-skill/raw/main/install.sh | bash -s -- --target hermes,claude
+curl -fsSL https://gitee.com/GreatBigM/adb-tftp-skill/raw/main/install.sh | bash -s -- --target hermes,claude,zcode
 
-# 全部目标
+# 全部目标（含 ZCode）
 curl -fsSL https://gitee.com/GreatBigM/adb-tftp-skill/raw/main/install.sh | bash -s -- --all
 ```
 
@@ -33,6 +33,7 @@ git clone --depth 1 https://gitee.com/GreatBigM/adb-tftp-skill.git /tmp/adb-tftp
 cp -r /tmp/adb-tftp-skill ~/.hermes/skills/adb-tftp   # Hermes
 cp -r /tmp/adb-tftp-skill ~/.claude/skills/adb-tftp    # Claude Code
 cp -r /tmp/adb-tftp-skill ~/.codex/skills/adb-tftp     # Codex
+cp -r /tmp/adb-tftp-skill ~/.zcode/skills/adb-tftp     # ZCode
 ```
 
 > 注意：`hermes skills install` 会被安全扫描拦截（skill 涉及 `devmem`/`reboot`/`sudo` 等命令触发 dangerous 误报），一键脚本/手动复制是合规替代路径。

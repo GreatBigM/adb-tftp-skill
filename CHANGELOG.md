@@ -2,6 +2,20 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.2.0 (2026-08-18)
+
+### Added
+
+- **ZCode 安装目标**：`install.sh` 支持 ZCode（探测 `~/.zcode` → 安装到 `~/.zcode/skills/adb-tftp`），README 补 `--target zcode` 示例与手动复制路径，发布页一键命令即可装到 ZCode
+
+### Fixed
+
+- **默认分支统一 main**：仓库分支由 `master` 改为 `main` 并推送双远端（此前发布页 `raw/main/install.sh` 404，一键命令失效）
+
+### Changed
+
+- 随 1.2.0 一并推送此前未推送的 description 精简提交（市场卡片 ≤100 字规格）
+
 ## 1.1.0 (2026-08-04)
 
 ### Changed
