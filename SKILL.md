@@ -4,7 +4,7 @@ description: Ingenic T32 NOR ADB TFTP 分区烧录：CPSPR 触发 U-Boot，回�
 version: 1.2.0
 category: devops
 metadata:
-  hermes:
+  agent:
     triggers: [adb烧录, cpspr, mai_auto_flash, ip-reset-and-wait, 分区烧录, hm6801烧录, hm6502烧录, hm6503烧录, hm6402烧录, gen_adbd_conf, user_env, prepare烧录环境]
 ---
 
