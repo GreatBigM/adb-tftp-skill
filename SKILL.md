@@ -1,7 +1,7 @@
 ---
 name: adb-tftp
-description: Ingenic T32 NOR ADB TFTP 分区烧录：CPSPR 触发 U-Boot，回连免串口查IP。适配 HM6801/HM6502/HM6503/HM6402，HM6505 NAND 除外。
-version: 1.2.0
+description: Ingenic T32 NOR ADB TFTP 分区烧录：CPSPR 触发 U-Boot，回连免串口查IP。适配 HM6801/HM6502/HM6503/HM6402。
+version: 1.3.0
 category: devops
 metadata:
   agent:
@@ -470,8 +470,8 @@ adb shell reboot
 
 ## 交叉引用
 
-- 串口通道兜底：`ingenic-basic-tftp-flash` skill（同 category devops）
-- U-Boot mai_tftp 命令详解、擦除范围演化史、NOR_ALL.bin 布局：见串口通道 skill
+- 串口通道兜底（设备离线/ADB 挂死）：`serial-tftp` skill（同 category devops）
+- U-Boot mai_tftp 命令详解、擦除范围演化史、NOR_ALL.bin 布局：见串口通道 skill（`serial-tftp` 的 references/）
 - 定制 adb 源码位置：`third_party/android_port`（项目内）
 - 分区表证据链（PRJ.h mtdparts / 仓库 auto_update_tftp.txt / HM6505 NAND 差异）：见 `references/partition-table-evidence.md`
 - FIT 镜像 mtdparts 动态改写机制（system_b 运行时生成原理 + 源码证据链）：见 `references/fit-mtdparts-rewrite.md`

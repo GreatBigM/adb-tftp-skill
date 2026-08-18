@@ -84,5 +84,5 @@ adb-tftp-skill/
 
 ## 相关资源
 
-- 串口通道（设备离线/ADB 挂死时兜底）：`ingenic-basic-tftp-flash`
+- 串口通道（设备离线/ADB 挂死时兜底）：`serial-tftp`（serial-tftp-skill 仓库）
 - 分区表权威源：`device/soc/ingenic/uboot/t32_t33/include/configs/PRJ.h` 的 `BOOTARGS_SFCNOR_PARTITION`

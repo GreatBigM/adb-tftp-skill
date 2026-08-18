@@ -2,6 +2,14 @@
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
+## 1.3.0 (2026-08-18)
+
+### Fixed（审查修复）
+
+- **description 精简至 100 字内**：去掉「HM6505 NAND 除外」（市场卡片 ≤100 字规格）
+- **死链改引**：交叉引用 `ingenic-basic-tftp-flash`（不存在的技能）→ `serial-tftp`（现串口通道技能）
+- 版本 1.2.0 → 1.3.0
+
 ## 1.2.0 (2026-08-18)
 
 ### Added
