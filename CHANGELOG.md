@@ -53,3 +53,19 @@
 
 - 适用 HM6801/HM6502/HM6502_B01/HM6503/HM6402（NOR 家族共享 mtdparts）；HM6505（NAND）明确拒绝
 - IP 编码模式 CPSPR `0xXXYY0909` 实测首试即触发；simple 模式固定 0x00000909 有 serverip 解析风险（1.1.0 关注）
+
+## 1.4.0 (2026-08-28)
+
+### Added（并入 adb-debug）
+
+- 新增「ADB 调试（非烧录场景）」章节：连接建立、故障速查、断线恢复兜底通道、Ingenic 平台流程
+- 并入 adb-debug 的脚本 serial-login-ip-adbd.py / serial-base64-push.py 与 2 个 references
+- description 更新为「ADB 通道：TFTP 烧录 + ADB 调试」；triggers 补 ADB 调试类
+- 版本 1.3.0 → 1.4.0
+
+## 1.4.1 (2026-08-28)
+
+### Added
+
+- install.sh 新增 pi 安装目标（探测 `~/.pi/agent` → 安装到 `~/.pi/agent/skills/<skill>`，pi 自动发现）
+- 版本 1.4.0 → 1.4.1

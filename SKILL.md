@@ -1,11 +1,12 @@
 ---
 name: adb-tftp
-description: Ingenic T32 NOR ADB TFTP 分区烧录：CPSPR 触发 U-Boot，回连免串口查IP。适配 HM6801/HM6502/HM6503/HM6402。
-version: 1.3.0
+description: Ingenic T32 NOR ADB 通道：TFTP 分区烧录（CPSPR 触发）+ ADB 调试（连接/排障/断线恢复）。适配 HM6801/HM6502/HM6503/HM6402。
+version: 1.4.1
 category: devops
 metadata:
   agent:
-    triggers: [adb烧录, cpspr, mai_auto_flash, ip-reset-and-wait, 分区烧录, hm6801烧录, hm6502烧录, hm6503烧录, hm6402烧录, gen_adbd_conf, user_env, prepare烧录环境]
+    tags: [adb, adbd, tftp, 烧录, 刷机, 调试]
+    triggers: [adb烧录, cpspr, mai_auto_flash, ip-reset-and-wait, 分区烧录, hm6801烧录, hm6502烧录, hm6503烧录, hm6402烧录, gen_adbd_conf, user_env, prepare烧录环境, adb connect, adb offline, 设备指纹, adb shell, 推送二进制]
 ---
 
 # Ingenic ADB 通道 TFTP 烧录（adb-tftp）
@@ -468,6 +469,44 @@ adb shell reboot
 
 > 关键陷阱与 `pack_firmware` 覆盖问题见 `references/troubleshooting.md`。
 
+## ADB 调试（非烧录场景，并入自 adb-debug）
+
+烧录之外的 ADB 日常：连接建立、故障排查、断线恢复、推送文件。
+
+### 连接建立
+
+1. **查设备 IP**：串口 ifconfig 最可靠（`ifconfig` 看 eth0/wlan0 地址）；无串口才用 DHCP 扫描
+2. 连接：`adb connect <ip>`（**不带端口**——adb 1.0.32 带 `:5555` 会解析成 `<ip>:5555:5555` 报错；默认即 5555；多设备用 `-s <ip>:5555` 指定）
+3. 验证：`adb -s <ip>:5555 shell echo ok`
+
+> adbd 由 init 托管自启，**不手动启动**（手动 `adbd &` 会掩盖问题）。adbd 不在时查 `ps|grep adbd` + `dmesg|grep 'crash too many'` 判断 init 是否放弃。
+
+### 故障速查（if-X-then-Y）
+
+| 症状 | 处理 |
+|------|------|
+| ADB offline | `disconnect` + `kill-server` + `start-server` + `reconnect`（**单独 kill-server 不够**） |
+| 幽灵连接（devices 显示 device 但 shell 失败） | 必须 `disconnect` 重连 |
+| connect 报 `unable to connect ...:5555:5555` | adb 1.0.32 带端口解析 bug：**改用 `adb connect <ip>` 不带端口**；仍不通先怀疑 DHCP 换 IP（串口 ifconfig 确认为准） |
+| shell 超时杀进程 | 长命令用后台（`&`）+ 轮询结果文件 |
+| IP 漂移/多设备混淆 | 每次操作显式 `-s <ip>:5555` |
+| /tmp 文件丢失 | 烧录后 /tmp 清空，**每次烧录后重推**（iperf3 + wpa.conf + cap.sh） |
+
+> 推送文件：`adb -s <ip>:5555 push <local> <device-path>`，推送后验证 `ls -l` + 可选 md5 对齐。
+
+### 断线恢复（ADB 不通时的兜底通道）
+
+ADB 通道彻底不通时，两条串口兜底路径：
+
+1. **HTTP wget fallback（首选）**：宿主机 `python3 -m http.server 8888 --bind <宿主机IP>`，设备串口 `busybox wget -q <宿主机IP>:8888/<文件>`（无 tftp 时）
+2. **Serial Base64 Push（无网络兜底）**：串口分块写 base64（500 chars/块防截断），设备端 `base64 -d` 还原
+
+2 次 offline 后切兜底通道，**不循环重连**。串口 wget 后记得 `chmod +x`。兜底通道依赖串口——串口不通时先修串口（`serial-tftp`）。
+
+### Ingenic 平台（T32/T33）
+
+平台特定流程（串口盲打 → 查 DHCP IP → ADB 连接）见 `references/ingenic-adb-connect.md`。
+
 ## 交叉引用
 
 - 串口通道兜底（设备离线/ADB 挂死）：`serial-tftp` skill（同 category devops）
@@ -481,5 +520,5 @@ adb shell reboot
 
 ## 支持文件清单
 
-- 脚本：`scripts/gen_tftp_script.py`、`scripts/mai_auto_flash.sh`、`scripts/gen_adbd_conf_noninteractive.sh`
-- 参考：`references/partition-table-evidence.md`、`references/fit-mtdparts-rewrite.md`、`references/fit-rsa-signature-issue.md`、`references/env-nor-full-flash-loop.md`、`references/troubleshooting.md`
+- 脚本：`scripts/gen_tftp_script.py`、`scripts/mai_auto_flash.sh`、`scripts/gen_adbd_conf_noninteractive.sh`、`scripts/serial-login-ip-adbd.py`、`scripts/serial-base64-push.py`
+- 参考：`references/partition-table-evidence.md`、`references/fit-mtdparts-rewrite.md`、`references/fit-rsa-signature-issue.md`、`references/env-nor-full-flash-loop.md`、`references/troubleshooting.md`、`references/adb-recovery.md`、`references/ingenic-adb-connect.md`
