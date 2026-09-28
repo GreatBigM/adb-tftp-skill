@@ -9,13 +9,14 @@ NOT supported (partition table differs)：
 
 Usage:
     gen_tftp_script.py [--project <name>] [--output-dir <dir>] <partition>...
-    gen_tftp_script.py [--project <name>] [--output-dir <dir>] all
+    gen_tftp_script.py [--project <name>] [--output-dir <dir>] all      # 擦到 algo 末尾，保留 factory/env/log
+    gen_tftp_script.py [--project <name>] [--output-dir <dir>] full     # 真全片：16MB 整颗擦写（含参数区）
 
 Partitions (NOR family, from PRJ.h BOOTARGS_SFCNOR_PARTITION @ CONFIG_FIT):
     uboot       U-Boot bootloader          (0x000000, 256KB)
     rootfs      Root filesystem             (0x040000, 2.5MB, 2368K)
-    system_a    Kernel + system A (factory) (0x290000, 5.7MB, 5824K)  [FIT: dtb+kernel+squashfs]
-    system_b    Kernel + system B (user)    (0x840000, 5.7MB, 5824K)  [FIT: dtb+kernel+squashfs]
+    system_a    Kernel + system A (factory) (0x290000, 5.7MB, 5568K)  [FIT: dtb+kernel+squashfs]
+    system_b    Kernel + system B (user)    (0x800000, 5.7MB, 5568K)  [FIT: dtb+kernel+squashfs]
 
     ⚠️ system_a/system_b 分区烧的是 FIT image (kernel_system_x.image, 整块 5824K).
        FIT 内 embedded squashfs 通过 kernel CMDLINE 里的 `4141056@0x974200`
@@ -34,6 +35,23 @@ Notes:
     - Default output-dir file: <dir>/auto_update_tftp.txt
     - Compatible with old flag name: still accepts symlink invocation as gen_tftp_script_6801.py.
 """
+
+# ⚠️⚠️ 分区表过时警告（2026-09-12 反思 cron 加，勿删）════════════════════════════
+# 本文件 PARTITIONS 表最后同步 = 2026-07-18，**已与当前布局不一致**（勿直接用于 hm6502* 分区级烧录）。
+#
+# 唯一真相源 = <项目>/test/factory_test/PackAllBin/partition_layout/partitions.conf
+#   段 1 [hm6502 hm6503 hm6402 hm6801 hm6802]（2026-09-07 起）：
+#     boot 0x000000/256K, rootfs 0x040000/2368K, sysA 0x290000/6080K,
+#     sysB 0x880000/6080K, algo 0xE70000/1024K, factory 0xF70000/56K,
+#     env_a 0xF7E000/4K, env_b 0xF7F000/4K, log 0xF80000/512K
+#     → 擦除上限 ALL_ERASE_SIZE = 0xF70000
+#   段 2 [hm6502_b01]：sysA 0x270000/5888K, sysB 0x830000/5888K, algo 0xDF0000/1536K
+#     → 单一硬编码表天然无法表达两个段，这是「必须改为读 conf」的根本原因
+#
+# 正确用法：`python3 partition_layout.py apply-flash <product> --write`
+#   （自动跟随 conf 生成 auto_update_tftp.txt；pack_all.sh 内亦先跑 check）
+# 待办（需人工/编码任务）：把 PARTITIONS 改为解析 partitions.conf，彻底消除第二真相源。
+# ═══════════════════════════════════════════════════════════════════════════════
 
 import sys
 import os
@@ -70,9 +88,13 @@ PARTITIONS = {
 # 改分区表时自动跟随，避免硬编码漏同步。= PARTITIONS["algo"].offset + .size
 ALL_ERASE_SIZE = PARTITIONS["algo"]["offset"] + PARTITIONS["algo"]["size"]
 
+# 整颗 NOR 容量：同样从分区表推导（log 末尾），不硬编码 16MB。
+# 用于 `full` 模式——真全片擦写，连 factory/env/log 参数区一起抹。
+NOR_TOTAL_SIZE = PARTITIONS["log"]["offset"] + PARTITIONS["log"]["size"]
+
 SUPPORTED_PROJECTS = ["hm6801", "hm6502", "hm6502_b01", "hm6503", "hm6402"]
 
-PARTITION_ORDER = ["uboot", "rootfs", "system_a", "system_b", "algo",
+PARTITION_ORDER = ["full", "uboot", "rootfs", "system_a", "system_b", "algo",
                    "factory", "env_a", "env_b", "log", "env", "data"]
 
 BASH_COMPLETION = r'''
@@ -80,7 +102,7 @@ _gen_tftp_script() {
     local cur opts
     COMPREPLY=()
     cur="${COMP_WORDS[COMP_CWORD]}"
-    opts="all uboot rootfs system_a system_b algo factory env_a env_b log env data"
+    opts="all full uboot rootfs system_a system_b algo factory env_a env_b log env data"
     COMPREPLY=( $(compgen -W "${opts}" -- "${cur}") )
     return 0
 }
@@ -92,7 +114,7 @@ complete -F _gen_tftp_script gen_tftp_script_6801.py
 ZSH_COMPLETION = r'''
 _gen_tftp_script() {
     local -a opts
-    opts=(all uboot rootfs system_a system_b algo factory env_a env_b log env data)
+    opts=(all full uboot rootfs system_a system_b algo factory env_a env_b log env data)
     _describe 'partition' opts
 }
 compdef _gen_tftp_script gen_tftp_script.py
@@ -126,6 +148,38 @@ def gen_all(project):
     lines.append("sf probe")
     lines.append(f"sf erase 0x0 0x{ALL_ERASE_SIZE:x}")
     lines.append(f"sf write {LOAD_ADDR} 0x0 0x{ALL_ERASE_SIZE:x}")
+    lines.append("")
+    lines.append("reset")
+    lines.append("% <- this is end of file symbol")
+    return lines
+
+
+def gen_full(project, output_dir=None):
+    """真·全片烧录：擦除整颗 NOR（含 factory / env_a / env_b / log 参数区）并回写完整 NOR_ALL.bin。
+
+    与 all 的区别：all 的擦除上限是 ALL_ERASE_SIZE（algo 末尾 = 0xEF0000），**保留**
+    factory/env/log；full 擦写 NOR_TOTAL_SIZE（16MB 整颗），参数区一并抹掉。
+
+    ⚠️ 后果：factory 内的 RF 校准数据、env（boot 槽选择/adbd 上报配置）、log 均丢失，
+       烧后需重做产测校准并重配 env。仅在明确要求“全擦”时使用。
+    """
+    all_bin = f"{project}_NOR_ALL.bin"
+    if output_dir:
+        path = os.path.join(output_dir, all_bin)
+        if os.path.isfile(path):
+            real = os.path.getsize(path)
+            if real != NOR_TOTAL_SIZE:
+                print(f"Error: {all_bin} is {real} bytes but NOR total is {NOR_TOTAL_SIZE} — "
+                      f"全片擦写长度与镜像不符，拒烧（防烧坏）", file=sys.stderr)
+                sys.exit(1)
+    lines = []
+    lines.append("# <- this is for comment / total file size must be less than 4KB")
+    lines.append("# FULL-CHIP: erases factory/env/log too — calibration data WILL be lost")
+    lines.append(f"tftpboot {LOAD_ADDR} {all_bin}")
+    lines.append("")
+    lines.append("sf probe")
+    lines.append(f"sf erase 0x0 0x{NOR_TOTAL_SIZE:x}")
+    lines.append(f"sf write {LOAD_ADDR} 0x0 0x{NOR_TOTAL_SIZE:x}")
     lines.append("")
     lines.append("reset")
     lines.append("% <- this is end of file symbol")
@@ -210,7 +264,14 @@ def main():
         print(f"  HM6505 uses NAND, not supported here — 请用 device/soc/ingenic/pkg_tool/hm6505/auto_update_tftp.txt")
         sys.exit(1)
 
-    if "all" in args:
+    if "full" in args:
+        if len(args) > 1:
+            print("Error: 'full' cannot be combined with other partitions")
+            sys.exit(1)
+        print("[gen_tftp_script] WARNING: FULL-CHIP mode — factory(RF 校准)/env/log 将被抹除，不可逆",
+              file=sys.stderr)
+        lines = gen_full(project, output_dir)
+    elif "all" in args:
         if len(args) > 1:
             print("Error: 'all' cannot be combined with other partitions")
             sys.exit(1)

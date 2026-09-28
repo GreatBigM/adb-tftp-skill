@@ -1,7 +1,7 @@
 ---
 name: adb-tftp
 description: Ingenic T32 NOR ADB 通道：TFTP 分区烧录（CPSPR 触发）+ ADB 调试（连接/排障/断线恢复）。适配 HM6801/HM6502/HM6503/HM6402。
-version: 1.4.1
+version: 1.4.2
 category: devops
 metadata:
   agent:
@@ -31,7 +31,7 @@ bash <skill>/scripts/mai_auto_flash.sh "" <设备IP>:5555
 
 ## 脚本行为要点（2026-08-04 更新）
 
-- `gen_tftp_script.py`：`ALL_ERASE_SIZE` 改为 `PARTITIONS["algo"].offset+size` 推导，改 algo 分区时擦除范围自动跟随；分区表已更新为 2026-07-17 后布局（sysB 6080k@0x800000、algo 1024k@0xDF0000、factory 0xEF0000）。
+- `gen_tftp_script.py`：`ALL_ERASE_SIZE` 由 `PARTITIONS["algo"].offset+size` 推导（改 algo 时擦除范围自动跟随）；⚠️ 但**表本身已过时**（最后同步 2026-07-18：sysB 0x800000/5568k、algo 0xDF0000），现状见下方分区表 = `partitions.conf`
 - `mai_auto_flash.sh`：IP 编码模式 CPSPR `0x97060909` 首试即可触发进 TFTP 模式（U-Boot 正确解码 serverip=主机 IP）。**必须用 original mode（传 NIC 参数）**：`mai_auto_flash.sh enp2s0 <ADB_SERIAL>`。simple mode（单参数）固定 CPSPR 0x00000909，U-Boot 解析 server IP 错误（实测解析出 <错误网段IP>）→ TFTP T T T T 失败 → autoboot fallback 回 Linux（2026-08-04 实测）。
 - **ADB 预检**：`adb devices` 空别急判不通——设备在内核时经串口 `ifconfig`+`netstat -tnl|grep 5555` 查 IP/adbd → `adb connect <IP>:5555` → 若 `offline` 则 `adb kill-server` 重连即好（ADB server 状态不对常致 offline）。
 - **烧后重连**：env 保留但 DHCP 可能换 IP；扫 /23 的 5555，多台设备按 `cat /proc/uptime` 辨识刚烧的（uptime 最短）。
@@ -137,38 +137,40 @@ FIT 模式设备运行时 `/proc/cmdline` 会动态显示 system_b 的不同偏�
 > ⚠️ PRJ.h 中的 `BOOTARGS_SFCNOR_PARTITION` 可在开发过程中被修改（如调整 kernel/log 分区大小）。
 > 以下分区表是当前最新提交的标准布局。如果 PRJ.h 被修改过，烧录前必须在 PRJ.h 中确认实际分区表。
 >
-> 🔧 **权威源 = `gen_tftp_script.py` 的 PARTITIONS 表**（改分区表时 `ALL_ERASE_SIZE` 自动跟随 algo 末尾）。下表若与脚本不一致以脚本为准。2026-07-17 改过分区：sysB 5568k→6080k@0x800000、algo 1536k→1024k@0xDF0000，factory/env/log 前移。
+> 🔧 **权威源（2026-09-12 更正）= 项目内 `test/factory_test/PackAllBin/partition_layout/partitions.conf`（按项目号分段）**，
+> 配套 `partition_layout.py`：`mtdparts`（导出 PRJ.h）/ `apply-c`（C 头）/ `apply-flash --write`（生成本 skill 用的 `auto_update_tftp.txt`，自动跟随 conf）/ `check`。
+> ⚠️ `gen_tftp_script.py` 的硬编码 `PARTITIONS` 表**最后同步 = 2026-07-18，已过时**（sysA/sysB/algo/factory 全错），**不得作为权威源**；改布局一律走 conf + `partition_layout.py`。
 
-```  /* 标准布局 (HM6502/HM6503/HM6801/HM6402, 2026-07-17 后) */
+```  /* 标准布局 (HM6502/HM6503/HM6402/HM6801/HM6802, 2026-09-07 起 = partitions.conf 段 1) */
 sfc0_nor: 256k(boot), 2368k(rootfs),
-          5568k@0x290000(kernel_system_a),
-          6080k@0x800000(kernel_system_b),
-          1024k@0xDF0000(algo),
-          56k(factory), 4k(env_a), 4k(env_b),
-          1024k(log)
+          6080k@0x290000(kernel_system_a),
+          6080k@0x880000(kernel_system_b),
+          1024k@0xE70000(algo),
+          56k@0xF70000(factory), 4k(env_a), 4k(env_b),
+          512k@0xF80000(log)
 ```
 
 | 分区名 | 偏移 | 大小 | 文件 | gen_tftp_script 关键字 | 备注 |
 |--------|------|------|------|------------------------|------|
 | boot (uboot) | 0x000000 | 256K | u-boot-with-spl.bin | `uboot` | ⚠️ 变砖风险，除非改了 U-Boot 否则不烧 |
 | rootfs | 0x040000 | 2368K (≈2.3M) | rootfs.img | `rootfs` | 默认烧 |
-| kernel_system_a | 0x290000 | 5568K (≈5.6M) | kernel_system_a.image | `system_a` | 出厂 slot |
-| kernel_system_b | 0x800000 | 6080K (≈5.9M) | kernel_system_b.image | `system_b` | 默认烧（用户 slot） |
-| algo | 0xDF0000 | 1024K (1M) | algo.img | `algo` | AI 模型 |
-| factory | 0xEF0000 | 56K | (仅擦除) | `factory` | 出厂标定 |
-| env_a | 0xEFE000 | 4K | env.bin | `env_a` / 别名 `env` | 主 env |
-| env_b | 0xEFF000 | 4K | env.bin | `env_b` | 备份 env |
-| log | 0xF00000 | 1024K | (仅擦除) | `log` / 别名 `data` | JFFS2 日志分区 |
-| all | 0x000000 | 0xEF0000 (~14.94M) | `<项目>_NOR_ALL.bin` | `all` | 擦 [0,0xEF0000)：boot+rootfs+sysA+sysB+algo，**保留 factory/env/log** ⚠️ 见下方说明 |
+| kernel_system_a | 0x290000 | 6080K (≈5.9M) | kernel_system_a.image | `system_a` | 出厂 slot |
+| kernel_system_b | 0x880000 | 6080K (≈5.9M) | kernel_system_b.image | `system_b` | 默认烧（用户 slot） |
+| algo | 0xE70000 | 1024K (1M) | algo.img | `algo` | AI 模型 |
+| factory | 0xF70000 | 56K | (仅擦除) | `factory` | 出厂标定 |
+| env_a | 0xF7E000 | 4K | env.bin | `env_a` / 别名 `env` | 主 env |
+| env_b | 0xF7F000 | 4K | env.bin | `env_b` | 备份 env |
+| log | 0xF80000 | 512K | (仅擦除) | `log` / 别名 `data` | JFFS2 日志分区 |
+| all | 0x000000 | 0xF70000 (~15.44M) | `<项目>_NOR_ALL.bin` | `all` | 擦 [0,0xF70000)：boot+rootfs+sysA+sysB+algo，**保留 factory/env/log** ⚠️ 见下方说明 |
 
 **两个常见变体：**
 
 | 项目 | 变体 | 差异 |
 |------|------|------|
-| HM6502_B01 | line 641 | `2240k(rootfs),5888k@0x270000(kernel_system_a),5888k@0x830000(kernel_system_b),512k(log)` |
-| 旧标准（< 2026-07-17） | — | `2368k(rootfs),5568k@0x290000(kernel_system_a),5568k@0x800000(kernel_system_b),1536k@0xDB0000(algo),56k@0xF30000(factory),768k@0xF40000(log)` |
+| HM6502_B01 | partitions.conf 段 2 | `2240k(rootfs),5888k@0x270000(kernel_system_a),5888k@0x830000(kernel_system_b),1536k@0xDF0000(algo),56k@0xF70000(factory),512k@0xF80000(log)` |
+| 旧标准（< 2026-09-07） | — | `2368k(rootfs),5568k@0x290000(kernel_system_a),5568k@0x800000(kernel_system_b),1536k@0xDB0000(algo),56k@0xF30000(factory),768k@0xF40000(log)` ⚠️ 已废弃，勿按此烧 |
 
-**注意：** `all` 擦 [0, 0xEF0000)，**保留 factory/env/log**——env 含网络/ADB 配置，故 `all` 模式 adbd 配置仍在，但 DHCP 可能换 IP，需扫 5555 + 按 uptime 辨识重连。
+**注意：** `all` 擦 [0, 0xF70000)，**保留 factory/env/log**——env 含网络/ADB 配置，故 `all` 模式 adbd 配置仍在，但 DHCP 可能换 IP，需扫 5555 + 按 uptime 辨识重连。
   - 若确实擦了 env（如手动 `sf erase 0xEFE000 ...`），则需串口恢复：登录 → 设静态 IP → 启 adbd → 重配 adbd_report.conf → 重启 adbd
 
 **factory 分区对齐问题：** factory 分区 56K 与 flash 64KB erase block 不兼容。`env_nor` 驱动的 `user` 节（偏移 0x8000/32K 位于 factory 内）擦除时对齐到 64KB block 边界 → 需擦 64KB 但 factory 只有 56K → 超边界 → `mtd_erase` 返回 `-EINVAL` → 驱动无限循环。这是硬件设计问题，不影响正常使用（仅在全片烧首次启动时触发）。若需彻底修复，将 factory 扩大到 64KB。
@@ -179,11 +181,13 @@ sfc0_nor: 256k(boot), 2368k(rootfs),
 - 不动 uboot → 避免变砖
 - 不动 system_a → 保留出厂 slot，可作恢复出厂用
 
-### ⚠️ 分区表可在 PRJ.h 中修改
+### ⚠️ 分区表改动流程（2026-09-12 更正）
 
-以上分区表是当前标准布局。`PRJ.h` 中 `BOOTARGS_SFCNOR_PARTITION` 可被修改（如调整 kernel/log 大小）。
+以上分区表以项目内 **`test/factory_test/PackAllBin/partition_layout/partitions.conf`** 为准（分段按项目号）；`PRJ.h` 的 `BOOTARGS_SFCNOR_PARTITION` 是它的**下游**（由 `partition_layout.py mtdparts` 生成，勿手改）。
+改布局正确姿势（详见该目录 README.md）：改 conf → `mtdparts` 贴 PRJ.h → 同步 `main.c` `MAI_KERNEL_A/B_OFFSET` → `apply-flash --write` → `check`。
 此时：
-- `gen_tftp_script.py` 硬编码偏移**不再匹配**，必须手动生成自定义 `auto_update_tftp.txt`
+- `gen_tftp_script.py` 硬编码偏移**已过时**（最后同步 2026-07-18）；`auto_update_tftp.txt` 一律用 `partition_layout.py apply-flash <product> --write` 生成（自动跟随 conf）
+- 中间产物 `pack_all.sh` 会先跑 `check`，不一致即中止（防"打包用旧偏移"）
 - **U-Boot SPL 密钥与新 FIT 签名绑定** → 改了 PRJ.h 后 build 会重编 U-Boot，新 SPI 密钥签名新 FIT。
   旧 U-Boot 的密钥不匹配，启动报 `FIT RSA signature verify failed`。必须联动烧录 uboot + kernel_system_b
 
@@ -351,6 +355,11 @@ done
    ```
    ifconfig eth0 <同网段IP> netmask 255.255.254.0 up
    ```
+2.5 **必须先重启 adbd**（eth0 拿到 IP 之后）
+   ```
+   udhcpc -i eth0 -b && killall adbd   # init 自动拉起
+   ```
+   adbd 若在 eth0 无 IP 期间已启动，会绑空地址 ⇒ 主机连接 **5555 恒 refused**（`netstat -tnl` 显示 `0.0.0.0:5555` LISTEN 也不算数）。2026-09-17 实测顺序：eth0 有 IP → 重启 adbd → connect 才通
 3. 主机 adb connect 新 IP
    ```bash
    adb connect <新IP>:5555

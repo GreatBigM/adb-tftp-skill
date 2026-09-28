@@ -40,7 +40,7 @@
 | 推送 adbd_report.conf 后 `adb ip-devices` 为空 | adbd 不会自动重读 conf，需重启 adbd 进程 | `adb shell kill -9 $(adb shell pidof adbd)`，等 ~10s init 重拉后心跳上报 |
 | `ip-reset-and-wait` 设备名不识别 | 设备名格式不在 simple 模式匹配范围（`hm[0-9]*`/`cam_*`/含`:`） | 确认 adbd_report.conf 中 device_name 与 mai_auto_flash.sh 传入的一致 |
 | 烧录后设备回来但 IP 变了 | DHCP 重新分配了新 IP | 这正是 ip-reset-and-wait 的优势：通过心跳自动发现新 IP，无需手动查 |
-| **CPSPR 连续多次触发都不进 TFTP** | CPSPR 写成功 + reboot 发出，但设备每次都正常启动旧固件，TFTP server 无请求。连续 3 次都如此。根因不明（可能 U-Boot 版本/编译配置差异导致 CPSPR 检测逻辑不生效） | 连续失败 3 次后停止重试，转串口通道。串口也不通时用 ADB 直写 mtd 分区。验证 CPSPR 是否生效：触发后查 TFTP server 日志，无请求 = 没进 TFTP |
+| **CPSPR 连续多次触发都不进 TFTP** | **5.15 内核上不是"不稳定"而是必然失效（根因已闭环 2026-09-15）**：`jz_wdt_restart()` 复位前把 CPSPR 覆写成 `REBOOT_SIGNATURE=0x003535`，用户态写进去的 `0xXXYY0909` 必被清掉 —— U-Boot 打 `Mod: CPSPR = 0x00003535` 后 autoboot 回旧固件，TFTP server 零请求。设备侧回读写成功 ≠ reboot 后还在 | 先按**内核大版本**判路：5.15 树**不要重试 CPSPR**，直接走串口 U-Boot 通道（"连续失败 3 次转串口"的前提在此不成立）；3.10 成功经验不可外推，换内核必重测。串口也不通时用 ADB 直写 mtd 分区。详见 qwiki `projects/hm6502_wifi/20260915-stage-profiling-flash-blockers.md` |
 | **`make pack_firmware` 后分区级 auto_update_tftp.txt 变成全量 NOR_ALL.bin 版本** | pack_firmware 从源码 `device/soc/ingenic/pkg_tool/<项目>/auto_update_tftp.txt` 复制覆盖产物目录。如果源码版是全量 NOR_ALL.bin 模式，之前 gen_tftp_script.py 生成的分区级脚本被覆盖 | pack_firmware 之后重新运行 `gen_tftp_script.py ... rootfs system_b` 覆盖回去。或改源码版 auto_update_tftp.txt 为分区级（持久化） |
 | 全片烧录首次启动后串口持续刷 `[env]ERROR: crc error in section user / erase error at 0x8000` | factory 分区 56K 与 flash 64KB erase block 不兼容 | 断电重启即可恢复。env 写失败不影响其他子系统 |
 | `sudo` 无密码卡住 | 用户 sudo 需要密码 | 配 NOPASSWD 或改为交互式先输密码 |
@@ -75,7 +75,9 @@ python3 gen_tftp_script.py ... rootfs system_b  # 再生成分区级脚本覆盖
 
 ### CPSPR 触发不稳定（历史实测分析）
 
-- 实测中 CPSPR 写成功 + reboot 发送成功，但设备可能直接进了 U-Boot 提示符而非 TFTP 模式。根因不确定（可能 U-Boot 版本差异）。
+- **根因已闭环（5.15 树，2026-09-15 实测）**：`arch/mips/xburst/soc-PRJ009/reset.c` 的 `jz_wdt_restart()` 在复位前把 CPSPR 覆写成 `REBOOT_SIGNATURE=0x003535`（`cpm_outl(0x5a5a,CPSPPR); cpm_outl(REBOOT_SIGNATURE,CPM_CPSPR); cpm_outl(0x0,CPSPPR);`）。反向验证过寄存器本身可写：ADB 内手写序回读 `0x00000909` 成功，一旦 `reboot` 就变 `0x3535` ⇒ **本内核上任何"先写 CPSPR 再 reboot"的通道都无效**。3.10 树同源写签名但 reboot 走 `SYS_RESTART`/notifier 链、历史确实成功过 ⇒ 换内核必须重测，别照抄本 skill。可绕三条路：串口 U-Boot 通道 / 内核侧改 `jz_wdt_restart` 不写签名 / 用户态 `devmem` 直起 WDT（未实测）。
+- ⚠️ **串口兜底通道自身也脆弱**：负载态 `reboot` 会挂死（RCU stall → 串口无回显 + adbd 消失 = wedged，只能物理断电），即两条通道共用「reboot 必须先成功」这一环；另：串口只回 `PRJ009#` 时常是 autoboot 1 s 窗口被字符打断（发 `boot` 即恢复），不是坏。见 `hm6502-build-flash-test` 的 `references/hm6502-flash-pitfalls.md`。
+- 实测中 CPSPR 写成功 + reboot 发送成功，但设备可能直接进了 U-Boot 提示符而非 TFTP 模式。根因不确定（可能 U-Boot 版本差异）。〔历史观测；5.15 上已由上面根因解释〕
 - 2026-07-16 实测：CPSPR 触发 3 次都成功写了寄存器 + 发了 reboot，但每次设备都正常启动到 Linux（旧固件），从未进入 TFTP 模式。TFTP server 日志无任何请求记录。**CPSPR 失败时设备不会卡死，而是正常启动旧系统**，所以可以用 `adb devices` + 扫描 DHCP 段确认设备回来了，然后重试。但连续失败 3 次以上时应转串口通道，不要无限重试。
 - 最终可靠方案：CPSPR 触发后立即接串口监控 boot 输出。5s 内没有 TFTP 下载活动 -> 串口介入手动配 IP + `mai_tftp`。
 - 串口不通时的困境：如果串口物理层不通（设备 echo 到 ttyS1 但主机 /dev/ttyUSB0 收到 0 bytes），CPSPR 又失败，则 TFTP 烧录完全无法进行。此时只能：①修复串口线 ②或用 ADB+flash_eraseall+dd 方式直接写 mtd 分区（见 SKILL.md「ADB 直写 mtd 分区」章节）。

@@ -1,4 +1,11 @@
 # CHANGELOG
+## 1.4.2 (2026-09-28)
+
+### Changed
+
+- 回灌本机 Hermes 副本的实测修正：分区权威源更正为项目 `partitions.conf`（09-12）+ `gen_tftp_script.py` 烧录门禁与 CLI 更新 + CPSPR 5.15 根因闭环（reset.c 覆写 CPSPR）
+- 版本 1.4.1 → 1.4.2
+
 
 本文件记录版本历史。版本号定义在 SKILL.md frontmatter 的 `version` 字段（单一真相源）。
 
