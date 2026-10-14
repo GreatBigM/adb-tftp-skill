@@ -1,7 +1,7 @@
 ---
 name: adb-tftp
 description: Ingenic T32 NOR ADB 通道：TFTP 分区烧录（CPSPR 触发）+ ADB 调试（连接/排障/断线恢复）。适配 HM6801/HM6502/HM6503/HM6402。
-version: 1.4.2
+version: 1.4.3
 category: devops
 metadata:
   agent:
