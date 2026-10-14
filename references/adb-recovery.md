@@ -13,11 +13,11 @@ Supplements `adb-debug` for the failure mode not covered there: ADB connects sho
 ### Symptoms
 
 ```
-$ adb connect 172.17.150.200
-connected to 172.17.150.200:5555
+$ adb connect <IP-1>
+connected to <IP-1>:5555
 
 $ adb devices
-172.17.150.200:5555    device      # Shows device, not offline
+<IP-1>:5555    device      # Shows device, not offline
 
 $ adb shell 'echo OK'
 error: device not found               # Every command fails immediately
@@ -42,7 +42,7 @@ error: device not found
    - ping works -> ADB channel unrecoverable, abandon repair
 3. Do NOT retry repeatedly - kill-server + reconnect fails after 2 tries
 
-### Root Cause (HM6502 specific)
+### Root Cause (<项目A> specific)
 
 - adbd killed by init restart limiter (`reap service adbd, crash too many times!`)
 - PID survives but socket handles closed or transport layer zombie

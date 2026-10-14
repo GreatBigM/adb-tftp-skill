@@ -30,7 +30,7 @@ PRJ009#
 3. DTB config 节点
 4. 各 sub-image 的 RSA-2048 SHA1 签名
 
-`build.sh hm6502` 执行全量编译时重新生成 rootfs squashfs，size/content 变化后签名失效。原因是：
+`build.sh <项目A>` 执行全量编译时重新生成 rootfs squashfs，size/content 变化后签名失效。原因是：
 
 - Docker 编译环境中的 RSA 签名密钥与 **U-Boot SPL 中硬编码的公钥**不匹配
 - 每次 `build.sh` 全量编译，cmake 的 `make all` 会用当前环境的密钥重新签名
@@ -61,7 +61,7 @@ bootm 0x80a00000
 
 ```bash
 # ADB 可用时
-adb push out/image_hm6502/SwapAB /tmp/
+adb push out/image_<项目A>/SwapAB /tmp/
 adb shell chmod +x /tmp/SwapAB
 adb shell /tmp/SwapAB
 adb shell reboot

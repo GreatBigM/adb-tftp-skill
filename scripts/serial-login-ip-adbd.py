@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
-Serial login + static IP + adbd restart for HM6502/Ingenic devices.
+Serial login + static IP + adbd restart for <项目A>/Ingenic devices.
 Steps: blind login (30 bursts) -> verify via timestamp echo -> set eth0 IP -> start adbd
 """
-import serial, time, subprocess, sys
+import os, serial, time, subprocess, sys
 
 BAUD = 921600
 DEVICE = '/dev/ttyUSB0'
+# 静态 IP 不写死进仓：环境变量 DEVICE_IP 给出（未给直接报错，免下发一个不存在的地址）
+STATIC_IP = os.environ.get('DEVICE_IP') or sys.exit('请用 DEVICE_IP=<设备静态IP> 指定要设置的地址')
 
 def reset_port():
     subprocess.run(['stty', '-F', DEVICE, str(BAUD),
@@ -59,7 +61,7 @@ if __name__ == '__main__':
         sys.exit(1)
 
     # Set static IP
-    out = send_cmd(ser, 'ifconfig eth0 172.17.150.200 netmask 255.255.254.0 up')
+    out = send_cmd(ser, f'ifconfig eth0 {STATIC_IP} netmask 255.255.254.0 up')
     print(f'IP_SET|{out.strip()[-200:]}')
 
     # Verify IP

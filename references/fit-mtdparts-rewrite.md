@@ -2,7 +2,7 @@
 
 ## 问题现象
 
-HM6502 等设备运行时 `/proc/cmdline` 显示：
+<项目A> 等设备运行时 `/proc/cmdline` 显示：
 ```
 mtdparts=sfc0_nor:256k(boot),2368k(rootfs),5568k@0x290000(kernel_system_a),4141056@0x974200(system_b),...
 ```
@@ -175,7 +175,7 @@ static int update_kernel_bootcmd_by_system(void)
 #endif
 ```
 
-HM6502 编译配置（mkconfig + PRJ.h）：
+<项目A> 编译配置（mkconfig + PRJ.h）：
 - CONFIG_FIT=y (mkconfig line 182)
 - CONFIG_SFC_NOR=y (PRJ.h line 584, via CONFIG_SPL_SFC_NOR)
 - CONFIG_SUPPORT_A_B_PARTITION=y (mkconfig line 187)
@@ -207,7 +207,7 @@ squashfs 在 FIT 内部，Linux 需要把它 mount 成块设备 /system。
 #define MAI_SYSTEM_A_VALUE "0"
 #define MAI_SYSTEM_B_VALUE "1"
 
-// HM6502/HM6503/HM6801/HM6402:
+// <项目A>/<项目B>/<项目E>/<项目D>:
 #define MAI_KERNEL_LOAD_ADDR  "0x80a00000"
 #define MAI_KERNEL_A_OFFSET   "0x290000"
 #define MAI_KERNEL_B_OFFSET   "0x800000"
@@ -233,7 +233,7 @@ mtdparts_offset() 只改写当前激活槽位（system=1 时改 kernel_system_b 
 ## 适用范围
 
 此机制适用于所有 Ingenic T32/T33 FIT 模式 NOR flash 项目：
-HM6801 / HM6502 / HM6502_B01 / HM6503 / HM6402
+<项目E> / <项目A> / <项目A>_b01 / <项目B> / <项目D>
 
-HM6502_B01 分区大小不同 (5888K)，但动态改写机制相同。
+<项目A>_b01 分区大小不同 (5888K)，但动态改写机制相同。
 非 FIT 模式 (PRJ.h line 648) 使用独立 kernel/system 分区，无此改写。

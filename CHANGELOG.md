@@ -6,6 +6,7 @@
 - **`--target hermes,claude`（空格形式）从未生效**：解析只认 `--target=`，空格形式把值吞成空串后落进"非交互 = 装全部"分支——而 README / 用法行 / 脚本头部**三处文档全写的空格形式**。现两种形式都支持，且 `--target` 缺参数时直接报错退出（不再静默装全部）。
 - **备份落在 skills 扫描根之内**：旧版备份写成 `<skills>/<name>.bak.<时间戳>`，而 agent 按「含 SKILL.md 的目录」发现技能、不看目录名 ⇒ 备份被当成**第二个同名技能**加载（重名歧义下静默跳过其一）。现备份落 `<tool 根>/skills-backup/`（扫描根之外），README 与脚本尾注同步。
 - **挂上 pre-push 闸门（脱敏 + CHANGELOG 同步）**：`scripts/publish-check.py`（扫项目代号 / 内网 IP / MAC / 长 hash / 凭据 / 本机路径，自带 `--self-test`）+ `scripts/hooks/pre-push`；启用一次 `git config core.hooksPath scripts/hooks`。理由与脱敏规则同源：**靠人记必然回潮**，检查要做成"推送时自动拦"而不是"记得手动跑"。CHANGELOG 闸门名单 = SKILL.md / install.sh / scripts/ / references/。
+- **脱敏：全量清理项目代号 / 内网 IP / MAC / 内网路径**（闸门首扫命中后执行）——正文、references、脚本注释与默认值一并处理：项目代号 → `<项目A>`…`<项目F>`（**大小写不敏感**，大写写法一并换）；IP / MAC → `<IP-n>` / `<MAC-n>`（**文件内编号唯一**，保住句内多机对比关系）；`/mnt/data/` → `<代码树>/`，本机家目录 → `<用户目录>/`；**脚本里的功能性默认值改为环境变量**（`TFTP_PROJECTS` / `DEVICE_IP` / `TFTP_GATEWAY`，未给时报错或显式跳过，不再写死内网值）；9 个文件名含代号的 references 改名（`hm6502-* → projA-*`、`hm6801-* → projE-*`），SKILL.md 引用清单同步。历史不回改（已公开的收不回，force push 也不行），本次只保证往后版本不再含。
 - 版本 1.4.2 → 1.4.3
 
 # CHANGELOG
@@ -23,7 +24,7 @@
 
 ### Fixed（审查修复）
 
-- **description 精简至 100 字内**：去掉「HM6505 NAND 除外」（市场卡片 ≤100 字规格）
+- **description 精简至 100 字内**：去掉「<项目C> NAND 除外」（市场卡片 ≤100 字规格）
 - **死链改引**：交叉引用 `ingenic-basic-tftp-flash`（不存在的技能）→ `serial-tftp`（现串口通道技能）
 - 版本 1.2.0 → 1.3.0
 
@@ -68,7 +69,7 @@
 
 ### 要点
 
-- 适用 HM6801/HM6502/HM6502_B01/HM6503/HM6402（NOR 家族共享 mtdparts）；HM6505（NAND）明确拒绝
+- 适用 <项目E>/<项目A>/<项目A>_b01/<项目B>/<项目D>（NOR 家族共享 mtdparts）；<项目C>（NAND）明确拒绝
 - IP 编码模式 CPSPR `0xXXYY0909` 实测首试即触发；simple 模式固定 0x00000909 有 serverip 解析风险（1.1.0 关注）
 
 ## 1.4.0 (2026-08-28)

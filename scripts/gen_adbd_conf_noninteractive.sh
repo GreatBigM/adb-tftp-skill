@@ -5,8 +5,8 @@
 #
 # Outputs (stdout, KEY=VALUE format for easy parsing):
 #   CONF_FILE=adbd_report.conf
-#   HOST_IP=192.168.1.100
-#   MAC=02:ab:cd:ef:12:34
+#   HOST_IP=<IP-1>
+#   MAC=<MAC-1>
 #   NIC=eth0
 #   DEVICE_NAME=cam_front_01
 #

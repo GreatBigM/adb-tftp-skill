@@ -2,10 +2,11 @@
 """Generate U-Boot tftp update script for Ingenic T32 family NOR flash projects.
 
 Supported projects (共用同一份 mtdparts, source: uboot/t32_t33/include/configs/PRJ.h)：
-    HM6801 / HM6502 / HM6502_B01 / HM6503 / HM6402
+    <项目E> / <项目A> / <项目A>_b01 / <项目B> / <项目D>
+    （清单不写死在本文件：环境变量 TFTP_PROJECTS，逗号分隔；未设则跳过校验）
 
 NOT supported (partition table differs)：
-    HM6505  ← NAND flash, 用 device/soc/ingenic/pkg_tool/hm6505/auto_update_tftp.txt
+    <项目C>  ← NAND flash, 用 device/soc/ingenic/pkg_tool/<项目C>/auto_update_tftp.txt
 
 Usage:
     gen_tftp_script.py [--project <name>] [--output-dir <dir>] <partition>...
@@ -37,15 +38,15 @@ Notes:
 """
 
 # ⚠️⚠️ 分区表过时警告（2026-09-12 反思 cron 加，勿删）════════════════════════════
-# 本文件 PARTITIONS 表最后同步 = 2026-07-18，**已与当前布局不一致**（勿直接用于 hm6502* 分区级烧录）。
+# 本文件 PARTITIONS 表最后同步 = 2026-07-18，**已与当前布局不一致**（勿直接用于 <项目A>* 分区级烧录）。
 #
 # 唯一真相源 = <项目>/test/factory_test/PackAllBin/partition_layout/partitions.conf
-#   段 1 [hm6502 hm6503 hm6402 hm6801 hm6802]（2026-09-07 起）：
+#   段 1 [<项目A> <项目B> <项目D> <项目E> <项目F>]（2026-09-07 起）：
 #     boot 0x000000/256K, rootfs 0x040000/2368K, sysA 0x290000/6080K,
 #     sysB 0x880000/6080K, algo 0xE70000/1024K, factory 0xF70000/56K,
 #     env_a 0xF7E000/4K, env_b 0xF7F000/4K, log 0xF80000/512K
 #     → 擦除上限 ALL_ERASE_SIZE = 0xF70000
-#   段 2 [hm6502_b01]：sysA 0x270000/5888K, sysB 0x830000/5888K, algo 0xDF0000/1536K
+#   段 2 [<项目A>_b01]：sysA 0x270000/5888K, sysB 0x830000/5888K, algo 0xDF0000/1536K
 #     → 单一硬编码表天然无法表达两个段，这是「必须改为读 conf」的根本原因
 #
 # 正确用法：`python3 partition_layout.py apply-flash <product> --write`
@@ -59,7 +60,7 @@ import argparse
 
 LOAD_ADDR = "0x80600000"
 
-# Partition table shared by HM6801/HM6502/HM6502_B01/HM6503/HM6402
+# Partition table shared by <项目E>/<项目A>/<项目A>_b01/<项目B>/<项目D>
 # Source: device/soc/ingenic/uboot/t32_t33/include/configs/PRJ.h  (BOOTARGS_SFCNOR_PARTITION, FIT branch)
 #   sfc0_nor:256k(boot),2368k(rootfs),5824k@0x290000(kernel_system_a),
 #            5824k@0x840000(kernel_system_b),1024k@0xDF0000(algo),
@@ -67,7 +68,7 @@ LOAD_ADDR = "0x80600000"
 # Updated 2026-07-17: sysB 5568k→6080k, algo 1536k→1024k@0xDF0000 (commit c1f3552)
 # Updated 2026-07-18: A/B 对称——redistribution 已借的 512k 均分 256/256，
 #                    sysA 5568k→5824k、sysB 6080k→5824k 且 offset 0x800000→0x840000
-#                    (openspec change hm6502-partition-ab-symmetric)。algo/log 不变。
+#                    (openspec change <项目A>-partition-ab-symmetric)。algo/log 不变。
 PARTITIONS = {
     "uboot":    {"offset": 0x000000, "size": 0x040000, "file": "u-boot-with-spl.bin"},
     "rootfs":   {"offset": 0x040000, "size": 0x250000, "file": "rootfs.img"},
@@ -92,7 +93,8 @@ ALL_ERASE_SIZE = PARTITIONS["algo"]["offset"] + PARTITIONS["algo"]["size"]
 # 用于 `full` 模式——真全片擦写，连 factory/env/log 参数区一起抹。
 NOR_TOTAL_SIZE = PARTITIONS["log"]["offset"] + PARTITIONS["log"]["size"]
 
-SUPPORTED_PROJECTS = ["hm6801", "hm6502", "hm6502_b01", "hm6503", "hm6402"]
+# 项目名清单不随仓发布：TFTP_PROJECTS（逗号分隔）；未设则跳过校验（靠 output_dir 自动识别）
+SUPPORTED_PROJECTS = [p.strip() for p in os.environ.get("TFTP_PROJECTS", "").split(",") if p.strip()]
 
 PARTITION_ORDER = ["full", "uboot", "rootfs", "system_a", "system_b", "algo",
                    "factory", "env_a", "env_b", "log", "env", "data"]
@@ -211,7 +213,7 @@ def gen_partitions(parts):
 
 
 def detect_project(output_dir):
-    """Try to auto-detect project name from output_dir path, e.g. out/image_hm6502 -> hm6502."""
+    """Try to auto-detect project name from output_dir path, e.g. out/image_<项目A> -> <项目A>."""
     if not output_dir:
         return None
     base = os.path.basename(os.path.abspath(output_dir)).lower()
@@ -253,15 +255,15 @@ def main():
     args = [a.lower() for a in positional]
 
     if project is None:
-        project = detect_project(output_dir) or "hm6801"
+        project = detect_project(output_dir) or (SUPPORTED_PROJECTS[0] if SUPPORTED_PROJECTS else "")
         if "all" in args:
             print(f"[gen_tftp_script] --project not given, guessed '{project}' from output-dir",
                   file=sys.stderr)
 
-    if project not in SUPPORTED_PROJECTS:
+    if SUPPORTED_PROJECTS and project not in SUPPORTED_PROJECTS:
         print(f"Error: project '{project}' not supported by this script.")
         print(f"  Supported: {', '.join(SUPPORTED_PROJECTS)}")
-        print(f"  HM6505 uses NAND, not supported here — 请用 device/soc/ingenic/pkg_tool/hm6505/auto_update_tftp.txt")
+        print(f"  NAND 型号本脚本不适用 — 请用 device/soc/ingenic/pkg_tool/<项目C>/auto_update_tftp.txt")
         sys.exit(1)
 
     if "full" in args:

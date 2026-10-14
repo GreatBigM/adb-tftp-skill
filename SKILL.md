@@ -1,12 +1,12 @@
 ---
 name: adb-tftp
-description: Ingenic T32 NOR ADB 通道：TFTP 分区烧录（CPSPR 触发）+ ADB 调试（连接/排障/断线恢复）。适配 HM6801/HM6502/HM6503/HM6402。
+description: Ingenic T32 NOR ADB 通道：TFTP 分区烧录（CPSPR 触发）+ ADB 调试（连接/排障/断线恢复）。适配 <项目E>/<项目A>/<项目B>/<项目D>。
 version: 1.4.3
 category: devops
 metadata:
   agent:
     tags: [adb, adbd, tftp, 烧录, 刷机, 调试]
-    triggers: [adb烧录, cpspr, mai_auto_flash, ip-reset-and-wait, 分区烧录, hm6801烧录, hm6502烧录, hm6503烧录, hm6402烧录, gen_adbd_conf, user_env, prepare烧录环境, adb connect, adb offline, 设备指纹, adb shell, 推送二进制]
+    triggers: [adb烧录, cpspr, mai_auto_flash, ip-reset-and-wait, 分区烧录, <项目E>烧录, <项目A>烧录, <项目B>烧录, <项目D>烧录, gen_adbd_conf, user_env, prepare烧录环境, adb connect, adb offline, 设备指纹, adb shell, 推送二进制]
 ---
 
 # Ingenic ADB 通道 TFTP 烧录（adb-tftp）
@@ -24,8 +24,8 @@ bash <skill>/scripts/mai_auto_flash.sh "" <设备IP>:5555
 
 | 项目 | 波特率 | TFTP 目录 |
 |------|--------|-----------|
-| HM6502 | 921600 | <项目根>/out/image_<项目> |
-| HM6801 | 115200 | <项目根>/out/image_<项目> |
+| <项目A> | 921600 | <项目根>/out/image_<项目> |
+| <项目E> | 115200 | <项目根>/out/image_<项目> |
 
 **安全前置提醒：** CPSPR 可能连续失败→3 次熔断转串口；`mai_auto_flash.sh` 必须用 original mode（传 NIC），simple mode 的 serverip 解析错误。坑 / 反模式 / 排障速查全量在 `references/troubleshooting.md`。
 
@@ -38,16 +38,16 @@ bash <skill>/scripts/mai_auto_flash.sh "" <设备IP>:5555
 
 ## ⚡ 快速参考
 
-**适用项目（NOR flash + 共享 mtdparts）：** HM6801 / HM6502 / HM6502_B01 / HM6503 / HM6402
+**适用项目（NOR flash + 共享 mtdparts）：** <项目E> / <项目A> / <项目A>_b01 / <项目B> / <项目D>
   证据：`device/soc/ingenic/uboot/t32_t33/include/configs/PRJ.h` 第 640 行明确
-  `CONFIG_HM6502 || CONFIG_HM6502_B01 || CONFIG_HM6503 || CONFIG_HM6801 || CONFIG_HM6402` 共用
+  `CONFIG_<项目A> || CONFIG_<项目A>_b01 || CONFIG_<项目B> || CONFIG_<项目E> || CONFIG_<项目D>` 共用
   同一份 `BOOTARGS_SFCNOR_PARTITION`。产物文件名结构 (`rootfs.img` / `kernel_system_a.image`
   / `kernel_system_b.image` / `algo.img` / `env.bin` / `<项目>_NOR_ALL.bin`) 完全一致。
 
 **不适用：**
-- **HM6505** —— NAND flash 平台，`nand erase.chip + nand write` 命令族，偏移量数量级完全
+- **<项目C>** —— NAND flash 平台，`nand erase.chip + nand write` 命令族，偏移量数量级完全
   不同（例：slot A rootfs 在 0x0100000，slot B system 在 0x4100000）。用它专属的
-  `device/soc/ingenic/pkg_tool/hm6505/auto_update_tftp.txt`，走串口通道刷。
+  `device/soc/ingenic/pkg_tool/<项目C>/auto_update_tftp.txt`，走串口通道刷。
 - 设备离线 / adbd 挂死 / kernel panic / U-Boot 环境损坏 → 用串口通道 skill 兜底。
 
 **首次使用（prepare -- 一次性环境准备）：**
@@ -72,7 +72,7 @@ adb shell sync
 
 **日常烧录：**
 ```bash
-PROJECT=<项目>           # 或 hm6801 / hm6502_b01 / hm6503 / hm6402
+PROJECT=<项目>           # 或 <项目E> / <项目A>_b01 / <项目B> / <项目D>
 SERIAL=<设备名>           # adbd_report.conf 里的 device_name（定制 adb 自动发现）
 SKILL=<skill>/scripts
 OUT=out/image_$PROJECT
@@ -102,7 +102,7 @@ adb -s $SERIAL shell echo "flash complete"
 | 项目 NOR 家族且 ADB 在线，只想烧 rootfs+system_b | **本 skill**（快、静、可选分区） |
 | 只烧单个分区（algo / system_a / env 等） | **本 skill** |
 | 设备离线 / adbd 挂死 / 串口 kernel panic loop / 设备已在 U-Boot 提示符 | 串口通道（可复用本 skill 的 gen_tftp_script.py 生成分区级脚本） |
-| HM6505（NAND 平台） | 串口通道 |
+| <项目C>（NAND 平台） | 串口通道 |
 | 首次配置设备 / 新设备 | **本 skill** prepare 流程（gen_adbd_conf + user_env） |
 | U-Boot 环境损坏、bootcmd 失效 | 串口通道 |
 | 全片重刷 NOR_ALL.bin | 两者都行，串口通道更稳（不依赖 adbd） |
@@ -120,7 +120,7 @@ adb -s $SERIAL shell echo "flash complete"
 
 TFTP server **必须在 reboot 前就已运行**，否则设备在 U-Boot 里超时找不到脚本。
 
-CPSPR 寄存器地址（0x10000034/38）已在 HM6801 和 HM6502 实测通用（2026-07-11 HM6502 端到端 all 全片烧成功）。HM6502_B01/HM6503/HM6402 首次使用建议先用 `all` 全片模式试烧一次（不依赖分区表，风险低），确认 CPSPR 触发通用后再分区级。
+CPSPR 寄存器地址（0x10000034/38）已在 <项目E> 和 <项目A> 实测通用（2026-07-11 <项目A> 端到端 all 全片烧成功）。<项目A>_b01/<项目B>/<项目D> 首次使用建议先用 `all` 全片模式试烧一次（不依赖分区表，风险低），确认 CPSPR 触发通用后再分区级。
 
 ### ⚠️ 关于 CMDLINE 里 `system_b` 偏移大小
 
@@ -129,7 +129,7 @@ FIT 模式设备运行时 `/proc/cmdline` 会动态显示 system_b 的不同偏�
 
 分区级烧录必须按 `PRJ.h` 的 `BOOTARGS_SFCNOR_PARTITION` 编译期定义。详见 `references/fit-mtdparts-rewrite.md`。
 
-## NOR 家族分区表（HM6801/HM6502/HM6502_B01/HM6503/HM6402 共用）
+## NOR 家族分区表（<项目E>/<项目A>/<项目A>_b01/<项目B>/<项目D> 共用）
 
 **权威源：** `device/soc/ingenic/uboot/t32_t33/include/configs/PRJ.h`
 `BOOTARGS_SFCNOR_PARTITION` (CONFIG_FIT 分支)：
@@ -141,7 +141,7 @@ FIT 模式设备运行时 `/proc/cmdline` 会动态显示 system_b 的不同偏�
 > 配套 `partition_layout.py`：`mtdparts`（导出 PRJ.h）/ `apply-c`（C 头）/ `apply-flash --write`（生成本 skill 用的 `auto_update_tftp.txt`，自动跟随 conf）/ `check`。
 > ⚠️ `gen_tftp_script.py` 的硬编码 `PARTITIONS` 表**最后同步 = 2026-07-18，已过时**（sysA/sysB/algo/factory 全错），**不得作为权威源**；改布局一律走 conf + `partition_layout.py`。
 
-```  /* 标准布局 (HM6502/HM6503/HM6402/HM6801/HM6802, 2026-09-07 起 = partitions.conf 段 1) */
+```  /* 标准布局 (<项目A>/<项目B>/<项目D>/<项目E>/<项目F>, 2026-09-07 起 = partitions.conf 段 1) */
 sfc0_nor: 256k(boot), 2368k(rootfs),
           6080k@0x290000(kernel_system_a),
           6080k@0x880000(kernel_system_b),
@@ -167,7 +167,7 @@ sfc0_nor: 256k(boot), 2368k(rootfs),
 
 | 项目 | 变体 | 差异 |
 |------|------|------|
-| HM6502_B01 | partitions.conf 段 2 | `2240k(rootfs),5888k@0x270000(kernel_system_a),5888k@0x830000(kernel_system_b),1536k@0xDF0000(algo),56k@0xF70000(factory),512k@0xF80000(log)` |
+| <项目A>_b01 | partitions.conf 段 2 | `2240k(rootfs),5888k@0x270000(kernel_system_a),5888k@0x830000(kernel_system_b),1536k@0xDF0000(algo),56k@0xF70000(factory),512k@0xF80000(log)` |
 | 旧标准（< 2026-09-07） | — | `2368k(rootfs),5568k@0x290000(kernel_system_a),5568k@0x800000(kernel_system_b),1536k@0xDB0000(algo),56k@0xF30000(factory),768k@0xF40000(log)` ⚠️ 已废弃，勿按此烧 |
 
 **注意：** `all` 擦 [0, 0xF70000)，**保留 factory/env/log**——env 含网络/ADB 配置，故 `all` 模式 adbd 配置仍在，但 DHCP 可能换 IP，需扫 5555 + 按 uptime 辨识重连。
@@ -177,7 +177,7 @@ sfc0_nor: 256k(boot), 2368k(rootfs),
 
 **默认分区 = `rootfs system_b`** ——
 - 不动 env → 保留网络/ADB/系统配置
-- 不动 log → 保留日志（HM6801 曾因 log 分区残留 KV 数据触发 SIGSEGV，如遇到用 `all` 全片擦）
+- 不动 log → 保留日志（<项目E> 曾因 log 分区残留 KV 数据触发 SIGSEGV，如遇到用 `all` 全片擦）
 - 不动 uboot → 避免变砖
 - 不动 system_a → 保留出厂 slot，可作恢复出厂用
 
@@ -230,7 +230,7 @@ bash <skill>/scripts/gen_adbd_conf_noninteractive.sh <设备名> [网卡名]
 # 输出格式：
 #   CONF_FILE=adbd_report.conf
 #   HOST_IP=<主机IP>
-#   MAC=02:ab:cd:ef:12:34
+#   MAC=<MAC-1>
 #   NIC=enp2s0
 #   DEVICE_NAME=<设备名>
 ```
@@ -423,7 +423,7 @@ bootm 0x80a00000
 bash gen_adbd_conf_noninteractive.sh <设备名>
 # CONF_FILE=adbd_report.conf
 # HOST_IP=<主机IP>
-# MAC=02:a1:b2:c3:d4:e5
+# MAC=<MAC-2>
 # NIC=enp2s0
 # DEVICE_NAME=<设备名>
 ```
@@ -437,9 +437,9 @@ gen_tftp_script.py [--project <name>] [--output-dir DIR] <partition>...
 gen_tftp_script.py [--project <name>] [--output-dir DIR] all
 ```
 
-- `--project` 缺省时按 `--output-dir` 路径中的 `image_<项目>` 自动识别，识别不到默认 `hm6801`
-- 支持项目：`hm6801` / `hm6502` / `hm6502_b01` / `hm6503` / `hm6402`
-- `hm6505` 会明确报错拒绝
+- `--project` 缺省时按 `--output-dir` 路径中的 `image_<项目>` 自动识别，识别不到默认 `<项目E>`
+- 支持项目：`<项目E>` / `<项目A>` / `<项目A>_b01` / `<项目B>` / `<项目D>`
+- `<项目C>` 会明确报错拒绝
 - `all` 不能和其他分区混用（生成整片擦写脚本，用 `<项目>_NOR_ALL.bin`）
 - 兼容：`gen_tftp_script_6801.py` 是同一脚本的软链接
 
@@ -521,7 +521,7 @@ ADB 通道彻底不通时，两条串口兜底路径：
 - 串口通道兜底（设备离线/ADB 挂死）：`serial-tftp` skill（同 category devops）
 - U-Boot mai_tftp 命令详解、擦除范围演化史、NOR_ALL.bin 布局：见串口通道 skill（`serial-tftp` 的 references/）
 - 定制 adb 源码位置：`third_party/android_port`（项目内）
-- 分区表证据链（PRJ.h mtdparts / 仓库 auto_update_tftp.txt / HM6505 NAND 差异）：见 `references/partition-table-evidence.md`
+- 分区表证据链（PRJ.h mtdparts / 仓库 auto_update_tftp.txt / <项目C> NAND 差异）：见 `references/partition-table-evidence.md`
 - FIT 镜像 mtdparts 动态改写机制（system_b 运行时生成原理 + 源码证据链）：见 `references/fit-mtdparts-rewrite.md`
 - FIT RSA 签名验证失败分析（症状、根因、恢复方法、如何避免）：见 `references/fit-rsa-signature-issue.md`
 - 坑 / 反模式 / 排障速查 / 决策原因：见 `references/troubleshooting.md`

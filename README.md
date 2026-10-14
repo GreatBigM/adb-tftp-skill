@@ -6,8 +6,8 @@ Ingenic T32 家族 NOR flash 设备的 **ADB 通道 TFTP 烧录** skill（Hermes
 
 设备 ADB 在线时，通过 ADB 写 CPSPR 寄存器触发 U-Boot 进入 TFTP 模式，实现**分区级烧录**（rootfs + system_b），比串口通道更快更静，且支持只烧单个分区。
 
-适用项目（NOR flash + 共享 mtdparts）：**HM6801 / HM6502 / HM6502_B01 / HM6503 / HM6402**
-不适用：HM6505（NAND 平台，走串口通道）
+适用项目（NOR flash + 共享 mtdparts）：**<项目E> / <项目A> / <项目A>_b01 / <项目B> / <项目D>**
+不适用：<项目C>（NAND 平台，走串口通道）
 
 ## 一键安装
 
