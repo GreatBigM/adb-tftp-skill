@@ -1,12 +1,12 @@
 ---
-name: adb-debug
+name: adb-recovery
 description: "ADB device status but commands fail with error device not found - HTTP wget fallback and serial base64 push"
 category: embedded-dev-loop
 ---
 
 # Embedded ADB Recovery
 
-Supplements `adb-debug` for the failure mode not covered there: ADB connects showing `device` status, but every command immediately returns `error: device not found`.
+Supplements the ADB debugging chapter in `SKILL.md` for the failure mode not covered there: ADB connects showing `device` status, but every command immediately returns `error: device not found`.
 
 ## Failure Mode: Device Status But Commands Fail
 

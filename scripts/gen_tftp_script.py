@@ -34,7 +34,7 @@ Notes:
     - --project only affects the NOR_ALL.bin filename when 'all' is used;
       partition offsets are identical across the family.
     - Default output-dir file: <dir>/auto_update_tftp.txt
-    - Compatible with old flag name: still accepts symlink invocation as gen_tftp_script_6801.py.
+    - Legacy script alias（含旧项目号的文件名）已移除；统一使用 gen_tftp_script.py。
 """
 
 # ⚠️⚠️ 分区表过时警告（2026-09-12 反思 cron 加，勿删）════════════════════════════
@@ -110,7 +110,6 @@ _gen_tftp_script() {
 }
 complete -F _gen_tftp_script gen_tftp_script.py
 complete -F _gen_tftp_script ./gen_tftp_script.py
-complete -F _gen_tftp_script gen_tftp_script_6801.py
 '''
 
 ZSH_COMPLETION = r'''
@@ -121,7 +120,6 @@ _gen_tftp_script() {
 }
 compdef _gen_tftp_script gen_tftp_script.py
 compdef _gen_tftp_script ./gen_tftp_script.py
-compdef _gen_tftp_script gen_tftp_script_6801.py
 '''
 
 

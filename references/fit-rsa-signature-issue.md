@@ -15,7 +15,7 @@ Bad Data Hash
 ## 'system' subimage verify/load failed (-13)
 Could not find a valid filesystem
 [bootm_find_other] bootm_find_filesystem error!
-PRJ009#
+<项目E>#
 ```
 
 - **kernel sub-image**（1.6MB lzma）→ 签名通过 ✅
@@ -44,12 +44,12 @@ system_a 是出厂 slot，未被分区级烧录覆盖。U-Boot 下执行：
 
 ```
 sf0 probe
-sf0 read 0x80a00000 0x290000 0x570000
-setenv bootargs console=ttyS1,1500000n8 mem=85M@0x0 rmem=43M@0x5500000 init=/linuxrc rootfstype=squashfs root=/dev/mtdblock1 ro mtdparts=sfc0_nor:256k(boot),2368k(rootfs),5568k@0x290000(kernel_system_a),5568k@0x800000(kernel_system_b),1536k@0xD70000(algo),56k(factory),4k(env_a),4k(env_b),1024k(log) system=0
+sf0 read 0x80a00000 0x290000 0x5F0000
+setenv bootargs console=ttyS1,1500000n8 mem=85M@0x0 rmem=43M@0x5500000 init=/linuxrc rootfstype=squashfs root=/dev/mtdblock1 ro mtdparts=sfc0_nor:256k(boot),2368k(rootfs),6080k@0x290000(kernel_system_a),6080k@0x880000(kernel_system_b),1024k@0xE70000(algo),56k@0xF70000(factory),4k(env_a),4k(env_b),512k@0xF80000(log) system=0
 bootm 0x80a00000
 ```
 
-注意：`sf0 read` 的 size 参数必须用分区实际大小 0x570000（不是 bootcmd 里的 0x600000）。
+注意：`sf0 read` 的 size 参数必须用分区实际大小 0x5F0000（不是 bootcmd 里的 0x600000）。
 
 ### 方法 B: 烧录旧版能启动的 kernel_system_b.image
 

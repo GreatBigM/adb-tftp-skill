@@ -8,7 +8,7 @@
 #
 # When called with a single argument that looks like a device serial (contains
 # ':' or starts with 'cam'/'hm'), uses simple mode with fixed CPSPR value.
-# This is compatible with wuxiaoliang's flash_6801 skill convention.
+# This is compatible with the earlier internal flash-tooling convention.
 #
 # CPSPR register sequence:
 #   0x10000038 <- 0x5a5a   (unlock)

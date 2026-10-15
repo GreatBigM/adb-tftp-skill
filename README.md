@@ -30,11 +30,13 @@ curl -fsSL https://gitee.com/GreatBigM/adb-tftp-skill/raw/main/install.sh | bash
 
 ```bash
 git clone --depth 1 https://gitee.com/GreatBigM/adb-tftp-skill.git /tmp/adb-tftp-skill
-cp -r /tmp/adb-tftp-skill ~/.hermes/skills/adb-tftp   # Hermes
-cp -r /tmp/adb-tftp-skill ~/.claude/skills/adb-tftp    # Claude Code
-cp -r /tmp/adb-tftp-skill ~/.codex/skills/adb-tftp     # Codex
-cp -r /tmp/adb-tftp-skill ~/.zcode/skills/adb-tftp     # ZCode
+mkdir -p ~/.hermes/skills/adb-tftp && cp -r /tmp/adb-tftp-skill/{SKILL.md,CHANGELOG.md,scripts,references} ~/.hermes/skills/adb-tftp/   # Hermes
+mkdir -p ~/.claude/skills/adb-tftp && cp -r /tmp/adb-tftp-skill/{SKILL.md,CHANGELOG.md,scripts,references} ~/.claude/skills/adb-tftp/    # Claude Code
+mkdir -p ~/.codex/skills/adb-tftp  && cp -r /tmp/adb-tftp-skill/{SKILL.md,CHANGELOG.md,scripts,references} ~/.codex/skills/adb-tftp/     # Codex
+mkdir -p ~/.zcode/skills/adb-tftp  && cp -r /tmp/adb-tftp-skill/{SKILL.md,CHANGELOG.md,scripts,references} ~/.zcode/skills/adb-tftp/     # ZCode
 ```
+
+> 只拷这四项（与 `install.sh` 的拷贝清单一致）：整仓 `cp -r` 会把 `.git` / `README.md` / `install.sh` / `LICENSE` 一起塞进 skills 目录。
 
 > 注意：`hermes skills install` 会被安全扫描拦截（skill 涉及 `devmem`/`reboot`/`sudo` 等命令触发 dangerous 误报），一键脚本/手动复制是合规替代路径。
 
@@ -73,13 +75,17 @@ adb-tftp-skill/
 ├── scripts/
 │   ├── gen_tftp_script.py       ← 生成分区级 auto_update_tftp.txt
 │   ├── mai_auto_flash.sh        ← CPSPR 触发烧录（IP 编码模式）
-│   └── gen_adbd_conf_noninteractive.sh  ← 生成 adbd_report.conf + 固定 MAC
+│   ├── gen_adbd_conf_noninteractive.sh  ← 生成 adbd_report.conf + 固定 MAC
+│   ├── serial-login-ip-adbd.py  ← ADB 连不上时的串口兜底登录
+│   └── serial-base64-push.py    ← 无网络时串口 base64 推文件
 └── references/
     ├── partition-table-evidence.md   ← NOR 分区表证据链
     ├── fit-mtdparts-rewrite.md       ← FIT mtdparts 动态改写机制
     ├── fit-rsa-signature-issue.md    ← FIT RSA 签名失败分析
-    ├── mips-ftrace-config.md         ← MIPS ftrace 配置指南
-    └── env-nor-full-flash-loop.md    ← env_nor 全片烧录循环问题
+    ├── env-nor-full-flash-loop.md    ← env_nor 全片烧录循环问题
+    ├── ingenic-adb-connect.md        ← Ingenic 平台：串口盲打 → 查 IP → ADB 连接
+    ├── adb-recovery.md               ← ADB「device 但命令失败」恢复（HTTP wget / base64 推）
+    └── troubleshooting.md            ← 坑 / 反模式 / 排障速查
 ```
 
 ## 相关资源

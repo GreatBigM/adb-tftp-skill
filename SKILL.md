@@ -1,8 +1,10 @@
 ---
 name: adb-tftp
 description: Ingenic T32 NOR ADB 通道：TFTP 分区烧录（CPSPR 触发）+ ADB 调试（连接/排障/断线恢复）。适配 <项目E>/<项目A>/<项目B>/<项目D>。
-version: 1.4.3
+version: 1.4.5
 category: devops
+author: GreatBigM
+license: MIT
 metadata:
   agent:
     tags: [adb, adbd, tftp, 烧录, 刷机, 调试]
@@ -441,7 +443,6 @@ gen_tftp_script.py [--project <name>] [--output-dir DIR] all
 - 支持项目：`<项目E>` / `<项目A>` / `<项目A>_b01` / `<项目B>` / `<项目D>`
 - `<项目C>` 会明确报错拒绝
 - `all` 不能和其他分区混用（生成整片擦写脚本，用 `<项目>_NOR_ALL.bin`）
-- 兼容：`gen_tftp_script_6801.py` 是同一脚本的软链接
 
 ## ADB 直写 mtd 分区（CPSPR + 串口都失败时的最后手段）
 

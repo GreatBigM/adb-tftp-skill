@@ -12,7 +12,7 @@
 #
 # Also writes adbd_report.conf to current directory.
 #
-# Source: adapted from wuxiaoliang's flash_6801 skill.
+# Source: adapted from an earlier internal flash-tooling convention.
 
 DEVICE_NAME="$1"
 if [ -z "$DEVICE_NAME" ]; then

@@ -35,7 +35,7 @@
 > 变为 `0xf60000`。分区布局随项目演进而调整，擦除范围必须以**实际文件内容**为准，不盲信文档。
 > <项目E> 的 `0x1000000` 全擦是临时 bug 绕避（未烧录 MAC 地址，log 分区残留 KV 导致 SIGSEGV）。
 
-NOR 四个项目的 auto_update_tftp.txt 结构同构，只有 `hm6XXX_NOR_ALL.bin` 文件名不同。
+NOR 四个项目的 auto_update_tftp.txt 结构同构，只有 `<项目>_NOR_ALL.bin` 的文件名前缀不同。
 但擦除范围值可能因分区布局调整而不同，使用前必须 `cat` 确认实际内容。
 
 ## 证据 3：构建产物文件名一致
@@ -97,9 +97,11 @@ PRJ.h 第 645-647 行有一份 **非 FIT** 布局（当前项目未启用，仅�
 #define BOOTARGS_SFCNOR_PARTITION     " mtdparts=sfc0_nor:256k(boot),2368k(rootfs),1856k(kernel_a),3712k(system_a),1856k(kernel_b),3712k(system_b),1536k@0xD70000(algo),56k(factory),4k(env_a),4k(env_b),1024k(log)"
 ```
 
-这个把 kernel 和 system 分开成两个分区，产物文件名会是 `kernel_a.img` + `system_a.img`（不带 kernel_system 合并）。当前 <项目E>/6502 系都是 FIT 模式，gen_tftp_script.py 也按 FIT 布局。**如果将来切回非 FIT，需要扩展 gen 脚本支持第二套布局。**
+这个把 kernel 和 system 分开成两个分区，产物文件名会是 `kernel_a.img` + `system_a.img`（不带 kernel_system 合并）。当前 <项目E>/<项目A> 系都是 FIT 模式，gen_tftp_script.py 也按 FIT 布局。**如果将来切回非 FIT，需要扩展 gen 脚本支持第二套布局。**
+
+> ⚠️ 本文引用的 mtdparts / 擦除范围等数值为**旧布局**（< 2026-09-07）示例；当前标准布局与擦除范围以项目 `test/factory_test/PackAllBin/partition_layout/partitions.conf` 为准（见 SKILL.md 分区表）。
 
 ## 相关信息
 
-- CPSPR 触发寄存器地址 0x10000034/38：来自 `flash_6801` 包中 `mai_auto_flash.sh`。已在 <项目E> 和 <项目A> 实测通用（2026-07-11）。
+- CPSPR 触发寄存器地址 0x10000034/38：来自旧 flash 包中 `mai_auto_flash.sh`。已在 <项目E> 和 <项目A> 实测通用（2026-07-11）。
 - 定制 adb `ip-reset-and-wait` 子命令：来自 `third_party/android_port/system/core/adb`。<项目G>/<项目A>/<项目E> 都基于同一 android_port，命令通用。

@@ -1,5 +1,7 @@
 # FIT 镜像 mtdparts 动态改写机制
 
+> ⚠️ 本文示例数值基于**旧布局**（sysB 5568K@0x800000、algo 1536K@0xD70000）；当前标准布局见 SKILL.md 分区表，实际以项目 `test/factory_test/PackAllBin/partition_layout/partitions.conf` 为准。动态改写**机制**不变。
+
 ## 问题现象
 
 <项目A> 等设备运行时 `/proc/cmdline` 显示：

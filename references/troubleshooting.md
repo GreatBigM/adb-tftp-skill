@@ -15,12 +15,12 @@
 | server_ip 未更新就烧 | 设备烧完不回连，`ip-reset-and-wait` 超时 | 换主机或主机 IP 变了 → 重推 `/data/adbd_report.conf` |
 | 用标准 Android SDK 的 adb | `ip-reset-and-wait: unknown command` | 编译并覆盖 `/usr/bin/adb`（前置准备第 2 步） |
 | **把本 skill 用到 <项目C>** | <项目C> 是 NAND 平台，命令族和偏移完全不同，硬跑要么 U-Boot 直接报 unknown command，要么写坏 flash | <项目C> 用串口通道走它自己的 auto_update_tftp.txt |
-| 换未验证项目不核对 mtdparts | 假设分区表一样但实际不同，擦写偏移错位 -> 内核/rootfs 打飞 -> 变砖或反复 kernel panic | 换项目前 `fw_printenv bootargs` 或看 `device/soc/ingenic/pkg_tool/<项目>/auto_update_tftp.txt`。当前 NOR 家族 (<项目E>/6502/6502_B01/6503/6402) 已由 PRJ.h 确认共用，其他新项目要重新核对。注意：U-Boot 优先读`env`里 bootargs，出厂可能留存旧错误值；全片烧（`all` 模式擦 0x0-0x1000000）会覆盖 env 分区，全擦后默认环境变量生效。 |
+| 换未验证项目不核对 mtdparts | 假设分区表一样但实际不同，擦写偏移错位 -> 内核/rootfs 打飞 -> 变砖或反复 kernel panic | 换项目前 `fw_printenv bootargs` 或看 `device/soc/ingenic/pkg_tool/<项目>/auto_update_tftp.txt`。当前 NOR 家族 (<项目E>/<项目A>/<项目A>_b01/<项目D>/<项目B>) 已由 PRJ.h 确认共用，其他新项目要重新核对。注意：U-Boot 优先读`env`里 bootargs，出厂可能留存旧错误值；全片烧（`all` 模式擦 0x0-0x1000000）会覆盖 env 分区，全擦后默认环境变量生效。 |
 | `all` + 其他分区混传 | gen 脚本报错 `'all' cannot be combined` | `all` 单独用（整片烧 NOR_ALL.bin） |
 | 编译后忘了 `make pack_firmware` | out/image_<项目>/ 里镜像是旧的，烧了也没变化 | 编译流程要 `make && make pack_firmware`；bootloader 改动加 `make pack_all` |
 | 工作目录不是项目根就跑 | out/image_<项目>/ 路径不对，TFTP server 起在错误目录，找不到镜像 | 先 `cd <项目根>` 再调用 |
 | `rm -rf out/image_xxx` 后重编但**没重启 TFTP server** | 进程持有旧 inode，服务的是已删除目录下的旧文件。烧录验证后设备上的 .ko 还是旧版 | 删 out/ 后必须重启 tftpd：`sudo pkill in.tftpd && sudo /usr/sbin/in.tftpd -l -s out/image_$PROJECT` |
-| **从 system_a 手动引导时 `sf0 read` 大小参数超出分区边界**（如 `sf0 read 0x80a00000 0x290000 0x600000`，但 system_a 实际只有 0x570000=5568K） | U-Boot 读超分区边界后**串口完全无响应**（字符不回显、无 shell 提示符），进入硬死锁，必须物理断电恢复 | `sf0 read` 的 size 参数必须 **≤ 分区实际大小**。推荐各命令分步单独发送（不要 `&&` 链式），防止部分执行丢失串口控制权 |
+| **从 system_a 手动引导时 `sf0 read` 大小参数超出分区边界**（如 `sf0 read 0x80a00000 0x290000 0x600000`，但 system_a 实际只有 0x5F0000=6080K） | U-Boot 读超分区边界后**串口完全无响应**（字符不回显、无 shell 提示符），进入硬死锁，必须物理断电恢复 | `sf0 read` 的 size 参数必须 **≤ 分区实际大小**。推荐各命令分步单独发送（不要 `&&` 链式），防止部分执行丢失串口控制权 |
 | **CPSPR simple mode（单参数）** | 固定 0x00000909，U-Boot 解析 server IP 错误（实测解析出 <错误网段IP>）→ TFTP T T T T 失败 → autoboot fallback 回 Linux，白跑一轮 | 用 IP 编码模式：`mai_auto_flash.sh enp2s0 <ADB_SERIAL>`（编码主机 IP → CPSPR 0xXXYY0909）。失败特征：串口见 `T T T T` + `Retry count exceeded`（2026-08-04 实测） |
 
 ## 故障排查（按症状）
@@ -34,7 +34,7 @@
 | `adb: no devices/emulators found` | ADB 已断线，或初始就没连 | 先跑 `adb devices` 确认，没连就走串口通道 |
 | `Error: cannot get IPv4 address from interface` | 网卡名传错或该网卡没 IP | `ls /sys/class/net/`、`ip -4 addr show`，手动传对网卡 |
 | 烧录后设备起不来 kernel panic | 分区镜像超尺寸、或改了 uboot 忘了 pack_all | 回串口通道全片重刷 |
-| 烧录后设备停在 U-Boot 提示符，串口显示 `FIT RSA signature verify failed (SPL key) / Bad Data Hash` | build 重新打包的 `kernel_system_b.image` 内 rootfs sub-image RSA 签名不匹配 U-Boot SPL 固化密钥。内核部分（kernel sub-image）签名通过，但 rootfs（system sub-image）签名无效。常见于多次 build 重建后 | 从 system_a 手动引导恢复：`sf0 probe; sf0 read 0x80a00000 0x290000 0x570000; setenv bootargs ... system=0; bootm 0x80a00000`。或用旧版能启动的 kernel_system_b.image 重新烧录 system_b |
+| 烧录后设备停在 U-Boot 提示符，串口显示 `FIT RSA signature verify failed (SPL key) / Bad Data Hash` | build 重新打包的 `kernel_system_b.image` 内 rootfs sub-image RSA 签名不匹配 U-Boot SPL 固化密钥。内核部分（kernel sub-image）签名通过，但 rootfs（system sub-image）签名无效。常见于多次 build 重建后 | 从 system_a 手动引导恢复：`sf0 probe; sf0 read 0x80a00000 0x290000 0x5F0000; setenv bootargs ... system=0; bootm 0x80a00000`。或用旧版能启动的 kernel_system_b.image 重新烧录 system_b |
 | `Error: project 'xxx' not supported` | gen_tftp_script.py 传了 <项目C> 或未列入的项目 | <项目C> 用串口通道；其他项目补进 SUPPORTED_PROJECTS 前先确认 mtdparts |
 | `cp: cannot create regular file '/usr/bin/adb': Text file busy` | adb daemon 正在运行，文件被占用 | 先 `adb kill-server` 再 `sudo cp` 覆盖 |
 | 推送 adbd_report.conf 后 `adb ip-devices` 为空 | adbd 不会自动重读 conf，需重启 adbd 进程 | `adb shell kill -9 $(adb shell pidof adbd)`，等 ~10s init 重拉后心跳上报 |
@@ -75,8 +75,8 @@ python3 gen_tftp_script.py ... rootfs system_b  # 再生成分区级脚本覆盖
 
 ### CPSPR 触发不稳定（历史实测分析）
 
-- **根因已闭环（5.15 树，2026-09-15 实测）**：`arch/mips/xburst/soc-PRJ009/reset.c` 的 `jz_wdt_restart()` 在复位前把 CPSPR 覆写成 `REBOOT_SIGNATURE=0x003535`（`cpm_outl(0x5a5a,CPSPPR); cpm_outl(REBOOT_SIGNATURE,CPM_CPSPR); cpm_outl(0x0,CPSPPR);`）。反向验证过寄存器本身可写：ADB 内手写序回读 `0x00000909` 成功，一旦 `reboot` 就变 `0x3535` ⇒ **本内核上任何"先写 CPSPR 再 reboot"的通道都无效**。3.10 树同源写签名但 reboot 走 `SYS_RESTART`/notifier 链、历史确实成功过 ⇒ 换内核必须重测，别照抄本 skill。可绕三条路：串口 U-Boot 通道 / 内核侧改 `jz_wdt_restart` 不写签名 / 用户态 `devmem` 直起 WDT（未实测）。
-- ⚠️ **串口兜底通道自身也脆弱**：负载态 `reboot` 会挂死（RCU stall → 串口无回显 + adbd 消失 = wedged，只能物理断电），即两条通道共用「reboot 必须先成功」这一环；另：串口只回 `PRJ009#` 时常是 autoboot 1 s 窗口被字符打断（发 `boot` 即恢复），不是坏。见 `<项目A>-build-flash-test` 的 `references/<项目A>-flash-pitfalls.md`。
+- **根因已闭环（5.15 树，2026-09-15 实测）**：`arch/mips/xburst/soc-<项目E>/reset.c` 的 `jz_wdt_restart()` 在复位前把 CPSPR 覆写成 `REBOOT_SIGNATURE=0x003535`（`cpm_outl(0x5a5a,CPSPPR); cpm_outl(REBOOT_SIGNATURE,CPM_CPSPR); cpm_outl(0x0,CPSPPR);`）。反向验证过寄存器本身可写：ADB 内手写序回读 `0x00000909` 成功，一旦 `reboot` 就变 `0x3535` ⇒ **本内核上任何"先写 CPSPR 再 reboot"的通道都无效**。3.10 树同源写签名但 reboot 走 `SYS_RESTART`/notifier 链、历史确实成功过 ⇒ 换内核必须重测，别照抄本 skill。可绕三条路：串口 U-Boot 通道 / 内核侧改 `jz_wdt_restart` 不写签名 / 用户态 `devmem` 直起 WDT（未实测）。
+- ⚠️ **串口兜底通道自身也脆弱**：负载态 `reboot` 会挂死（RCU stall → 串口无回显 + adbd 消失 = wedged，只能物理断电），即两条通道共用「reboot 必须先成功」这一环；另：串口只回 `<项目E>#` 时常是 autoboot 1 s 窗口被字符打断（发 `boot` 即恢复），不是坏。
 - 实测中 CPSPR 写成功 + reboot 发送成功，但设备可能直接进了 U-Boot 提示符而非 TFTP 模式。根因不确定（可能 U-Boot 版本差异）。〔历史观测；5.15 上已由上面根因解释〕
 - 2026-07-16 实测：CPSPR 触发 3 次都成功写了寄存器 + 发了 reboot，但每次设备都正常启动到 Linux（旧固件），从未进入 TFTP 模式。TFTP server 日志无任何请求记录。**CPSPR 失败时设备不会卡死，而是正常启动旧系统**，所以可以用 `adb devices` + 扫描 DHCP 段确认设备回来了，然后重试。但连续失败 3 次以上时应转串口通道，不要无限重试。
 - 最终可靠方案：CPSPR 触发后立即接串口监控 boot 输出。5s 内没有 TFTP 下载活动 -> 串口介入手动配 IP + `mai_tftp`。
