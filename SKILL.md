@@ -1,7 +1,7 @@
 ---
 name: adb-tftp
 description: Ingenic T32 NOR ADB 通道：TFTP 分区烧录（CPSPR 触发）+ ADB 调试（连接/排障/断线恢复）。适配 <项目E>/<项目A>/<项目B>/<项目D>。
-version: 1.4.5
+version: 1.4.6
 category: devops
 author: GreatBigM
 license: MIT
